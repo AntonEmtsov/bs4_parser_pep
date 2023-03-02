@@ -97,7 +97,7 @@ def download(session):
 
 def pep(session):
     response = get_response(session, PEPS_URL)
-    if response is None:
+    if not response:
         return
     tr_tags = find_tag(
         find_tag(
