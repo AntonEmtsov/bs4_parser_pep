@@ -4,22 +4,19 @@ from collections import defaultdict
 from urllib.parse import urljoin
 
 import requests_cache
-from bs4 import BeautifulSoup
 from tqdm import tqdm
 
 from configs import configure_argument_parser, configure_logging
 from constants import (
     BASE_DIR,
     EXPECTED_STATUS,
-    LXML,
     MAIN_DOC_URL,
     PATTERN,
     PEPS_URL,
-    WHATS_NEW_URL
+    WHATS_NEW_URL,
 )
-from exceptions import ListVersionsNotFound
 from outputs import control_output
-from utils import find_tag, get_response
+from utils import find_tag, get_response, get_soup
 
 COMMAND_LINE_ARGUMENTS = 'Аргументы командной строки: {args}'
 CONNECTION_ERROR = 'Не удалось установить соединение: {link}'
@@ -35,44 +32,39 @@ MISMATCHED_STATUSES = (
 PROGRAM_ERROR = 'Ошибка программы {error}'
 
 
-def soup(session, url, features=LXML):
-    return BeautifulSoup(get_response(session, url).text, features)
-
-
 def whats_new(session):
-    get_soup = soup(session, WHATS_NEW_URL).select(
+    soup = get_soup(session, WHATS_NEW_URL).select(
         '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
     )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     logs = []
-    for section in tqdm(get_soup):
+    for section in tqdm(soup):
         version_link = urljoin(WHATS_NEW_URL, section.find('a')['href'])
         try:
-            get_soup = soup(session, version_link)
+            soup = get_soup(session, version_link)
             results.append(
                 (
                     version_link,
-                    find_tag(get_soup, 'h1').text,
-                    get_soup.find('dl').text.replace('\n', ' ')
+                    find_tag(soup, 'h1').text,
+                    soup.find('dl').text.replace('\n', ' ')
                 )
             )
         except ConnectionError:
             logs.append(CONNECTION_ERROR.format(link=version_link))
-    for log in logs:
-        logging.info(log)
+    logging.info('\n'.join(logs))
     return results
 
 
 def latest_versions(session):
-    get_soup = soup(session, MAIN_DOC_URL).select(
+    soup = get_soup(session, MAIN_DOC_URL).select(
         'div.sphinxsidebarwrapper ul'
     )
-    for ul in get_soup:
+    for ul in soup:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
     else:
-        raise ListVersionsNotFound(LIST_VERSIONS_ERROR)
+        raise RuntimeError(LIST_VERSIONS_ERROR)
     results = [('Ссылка на документацию', 'Версия', 'Статус')]
     for a_tag in a_tags:
         text_match = re.search(PATTERN, a_tag.text,)
@@ -90,7 +82,7 @@ def download(session):
     downloads_url = urljoin(MAIN_DOC_URL, 'download.html')
     archive_url = urljoin(
         downloads_url,
-        soup(session, downloads_url).select_one(
+        get_soup(session, downloads_url).select_one(
             'table.docutils td > a[href$="pdf-a4.zip"]'
         )['href']
     )
@@ -103,17 +95,17 @@ def download(session):
 
 
 def pep(session):
-    get_soup = soup(session, PEPS_URL).select('#numerical-index tbody tr')
+    soup = get_soup(session, PEPS_URL).select('#numerical-index tbody tr')
     results = defaultdict(int)
     logs = []
-    for tr_tag in tqdm(get_soup):
+    for tr_tag in tqdm(soup):
         link = urljoin(PEPS_URL, find_tag(tr_tag, 'a')['href'])
         try:
-            status = find_tag(
-                soup(session, link),
-                'dl',
-                {'class': 'rfc2822 field-list simple'},
-            ).select_one(':-soup-contains("Status") + dd').string
+            status = get_soup(session, link).select_one(
+                'dl.rfc2822.field-list.simple'
+                '> :-soup-contains("Status")'
+                '+ dd'
+            ).text
             preview_status = EXPECTED_STATUS.get(
                 find_tag(tr_tag, 'td').text[1:]
             )
@@ -127,8 +119,7 @@ def pep(session):
             results[status] += 1
         except ConnectionError:
             logs.append(CONNECTION_ERROR.format(link=link))
-    for log in logs:
-        logging.info(log)
+    logging.info('\n'.join(logs))
     return (
         [('Статус', 'Количество')]
         + sorted(results.items())
@@ -149,8 +140,8 @@ def main():
     logging.info(LOG_PARSER_RUNNING)
     args = configure_argument_parser(MODE_TO_FUNCTION.keys()).parse_args()
     logging.info(COMMAND_LINE_ARGUMENTS.format(args=args))
-    session = requests_cache.CachedSession()
     try:
+        session = requests_cache.CachedSession()
         if args.clear_cache:
             session.cache.clear()
         parser_mode = args.mode

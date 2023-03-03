@@ -1,13 +1,17 @@
+from bs4 import BeautifulSoup
 from requests import RequestException
 
-from constants import UTF_8
 from exceptions import ParserFindTagException
 
 ERROR_TAG = 'Не найден тег {tag} {attrs}'
 RESPONSE_ERROR = 'Возникла ошибка при загрузке страницы {url}'
 
 
-def get_response(session, url, encoding=UTF_8):
+def get_soup(session, url, features='lxml'):
+    return BeautifulSoup(get_response(session, url).text, features)
+
+
+def get_response(session, url, encoding='utf-8'):
     try:
         response = session.get(url)
         response.encoding = encoding

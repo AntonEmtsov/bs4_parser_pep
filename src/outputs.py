@@ -7,10 +7,9 @@ from prettytable import PrettyTable
 from constants import (
     BASE_DIR,
     DATETIME_FORMAT,
-    FILE,
-    PRETTY,
+    PARSER_OPTION_FILE,
+    PARSER_OPTION_PRETTY,
     RESULTS,
-    UTF_8,
 )
 
 FILE_RESULTS_SAVED = 'Файл с результатами был сохранён: {file_path}'
@@ -43,14 +42,18 @@ def file_output(results, cli_args):
             data=dt.datetime.now().strftime(DATETIME_FORMAT),
         )
     )
-    with open(file_path, 'w', encoding=UTF_8) as f:
-        csv.writer(f, dialect=csv.unix_dialect).writerows(results)
+    with open(file_path, 'w', encoding='utf-8') as f:
+        csv.writer(
+            f, dialect=csv.unix_dialect
+        ).writerows(
+            results
+        )
     logging.info(FILE_RESULTS_SAVED.format(file_path=file_path))
 
 
 OUTPUTS = {
-    FILE: file_output,
-    PRETTY: pretty_output,
+    PARSER_OPTION_FILE: file_output,
+    PARSER_OPTION_PRETTY: pretty_output,
     None: default_output,
 }
 

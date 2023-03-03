@@ -16,15 +16,13 @@ EXPECTED_STATUS = {
     'W': ('Withdrawn',),
     '': ('Draft', 'Active'),
 }
-FILE = 'file'
-PRETTY = 'pretty'
+PARSER_OPTION_FILE = 'file'
+PARSER_OPTION_PRETTY = 'pretty'
 
 DATETIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
 DT_FORMAT = '%d.%m.%Y %H:%M:%S'
 LOG_FORMAT = '"%(asctime)s - [%(levelname)s] - %(message)s"'
-LXML = 'lxml'
 PATTERN = r'Python (?P<version>\d\.\d+) \((?P<status>.*)\)'
-UTF_8 = 'utf-8'
 
 MAIN_DOC_URL = 'https://docs.python.org/3/'
 PEPS_URL = 'https://peps.python.org/'
