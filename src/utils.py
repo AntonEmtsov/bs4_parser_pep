@@ -1,26 +1,23 @@
-import logging
-
 from requests import RequestException
 
+from constants import UTF_8
 from exceptions import ParserFindTagException
 
+ERROR_TAG = 'Не найден тег {tag} {attrs}'
+RESPONSE_ERROR = 'Возникла ошибка при загрузке страницы {url}'
 
-def get_response(session, url):
+
+def get_response(session, url, encoding=UTF_8):
     try:
         response = session.get(url)
-        response.encoding = 'utf-8'
+        response.encoding = encoding
         return response
     except RequestException:
-        logging.exception(
-            f'Возникла ошибка при загрузке страницы {url}',
-            stack_info=True
-        )
+        raise ConnectionError(RESPONSE_ERROR.format(url=url))
 
 
 def find_tag(soup, tag, attrs=None):
-    searched_tag = soup.find(tag, attrs=(attrs or {}))
+    searched_tag = soup.find(tag, attrs={} if attrs is None else attrs)
     if searched_tag is None:
-        error_msg = f'Не найден тег {tag} {attrs}'
-        logging.error(error_msg, stack_info=True)
-        raise ParserFindTagException(error_msg)
+        raise ParserFindTagException(ERROR_TAG.format(tag=tag, attrs=attrs))
     return searched_tag
