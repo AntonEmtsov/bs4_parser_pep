@@ -127,7 +127,8 @@ def pep(session):
             results[status] += 1
         except ConnectionError:
             logs.append(CONNECTION_ERROR.format(link=link))
-    logging.warning(logs.pop())
+    for log in logs:
+        logging.info(log)
     return (
         [('Статус', 'Количество')]
         + sorted(results.items())
