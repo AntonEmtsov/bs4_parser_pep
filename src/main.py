@@ -33,12 +33,12 @@ PROGRAM_ERROR = 'Ошибка программы {error}'
 
 
 def whats_new(session):
-    soup = get_soup(session, WHATS_NEW_URL).select(
+    li_tags = get_soup(session, WHATS_NEW_URL).select(
         '#what-s-new-in-python div.toctree-wrapper li.toctree-l1'
     )
     results = [('Ссылка на статью', 'Заголовок', 'Редактор, Автор')]
     logs = []
-    for section in tqdm(soup):
+    for section in tqdm(li_tags):
         version_link = urljoin(WHATS_NEW_URL, section.find('a')['href'])
         try:
             soup = get_soup(session, version_link)
@@ -51,15 +51,15 @@ def whats_new(session):
             )
         except ConnectionError:
             logs.append(CONNECTION_ERROR.format(link=version_link))
-    logging.info('\n'.join(logs))
+    list(map(logging.info, logs))
     return results
 
 
 def latest_versions(session):
-    soup = get_soup(session, MAIN_DOC_URL).select(
+    verions_python = get_soup(session, MAIN_DOC_URL).select(
         'div.sphinxsidebarwrapper ul'
     )
-    for ul in soup:
+    for ul in verions_python:
         if 'All versions' in ul.text:
             a_tags = ul.find_all('a')
             break
@@ -95,10 +95,12 @@ def download(session):
 
 
 def pep(session):
-    soup = get_soup(session, PEPS_URL).select('#numerical-index tbody tr')
+    peps_reference_internal = get_soup(session, PEPS_URL).select(
+        '#numerical-index tbody tr'
+    )
     results = defaultdict(int)
     logs = []
-    for tr_tag in tqdm(soup):
+    for tr_tag in tqdm(peps_reference_internal):
         link = urljoin(PEPS_URL, find_tag(tr_tag, 'a')['href'])
         try:
             status = get_soup(session, link).select_one(
@@ -119,7 +121,7 @@ def pep(session):
             results[status] += 1
         except ConnectionError:
             logs.append(CONNECTION_ERROR.format(link=link))
-    logging.info('\n'.join(logs))
+    list(map(logging.info, logs))
     return (
         [('Статус', 'Количество')]
         + sorted(results.items())
